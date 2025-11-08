@@ -2,7 +2,7 @@
  * useUserTier Hook
  *
  * Centralized hook for determining user tier (Guest, Freemium, Premium)
- * Single source of truth for all premium/freemium checks
+ * Single source of truth for all premium/freemium/guest checks
  *
  * @example
  * ```typescript
@@ -28,7 +28,6 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import type { StoreApi } from 'zustand';
 import type { PremiumStatus } from '../../core/entities/PremiumStatus';
 import type { IPremiumRepository } from '../../core/repositories/IPremiumRepository';
 import { getUserTierInfo } from '../../utils/userTierUtils';
@@ -72,6 +71,11 @@ export interface UseUserTierResult {
 /**
  * Hook to get user tier information
  * Combines auth state and premium status into single source of truth
+ * 
+ * All premium/freemium/guest checks are centralized here:
+ * - Guest: isGuest || !userId → always freemium, never premium
+ * - Freemium: authenticated but !isPremium
+ * - Premium: authenticated && isPremium
  */
 export function useUserTier(params: UseUserTierParams): UseUserTierResult {
   const { isGuest, userId, usePremiumStore, premiumRepository } = params;
@@ -101,7 +105,7 @@ export function useUserTier(params: UseUserTierParams): UseUserTierResult {
 
   // Calculate tier info using centralized logic
   const tierInfo = useMemo(() => {
-    // Guest users are never premium
+    // Guest users are never premium - centralized check
     if (isGuest || !userId) {
       return getUserTierInfo(true, null, false);
     }
@@ -120,4 +124,3 @@ export function useUserTier(params: UseUserTierParams): UseUserTierResult {
     refresh,
   };
 }
-

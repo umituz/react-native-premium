@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/umituz/react-native-premium"
+    "url": "git+https://github.com/umituz/react-native-premium.git"
   },
   "peerDependencies": {
     "react": ">=18.2.0",

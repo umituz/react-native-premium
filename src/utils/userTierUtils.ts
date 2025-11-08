@@ -2,10 +2,13 @@
  * User Tier Utilities
  *
  * Centralized logic for determining user tier (Guest, Freemium, Premium)
+ * 
+ * ALL premium/freemium/guest checks MUST go through these utilities.
+ * This is the single source of truth for tier determination.
  *
  * User Tiers:
- * - Guest: Not authenticated, always freemium
- * - Freemium: Authenticated but no active premium subscription OR guest
+ * - Guest: Not authenticated (isGuest || !userId) → always freemium, never premium
+ * - Freemium: Authenticated but no active premium subscription
  * - Premium: Authenticated with active premium subscription
  */
 
