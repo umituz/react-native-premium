@@ -269,16 +269,32 @@ Check if tier is guest.
 
 ### Async Functions
 
-#### `getIsPremium(isGuest, userId, fetcher)`
+#### `getIsPremium(isGuest, userId, isPremiumOrFetcher)`
 
-Gets premium status asynchronously. Guest users **NEVER** have premium.
+Get isPremium value with centralized logic. Guest users **NEVER** have premium.
+
+**Two usage modes:**
+
+1. **Sync mode** - When you already have isPremium value:
+   ```typescript
+   const isPremium = getIsPremium(false, 'user123', true); // boolean
+   ```
+
+2. **Async mode** - When you need to fetch from database:
+   ```typescript
+   const isPremium = await getIsPremium(
+     false,
+     'user123',
+     { isPremium: async (userId) => await premiumService.isPremium(userId) }
+   ); // Promise<boolean>
+   ```
 
 **Parameters:**
 - `isGuest: boolean` - Whether user is a guest
 - `userId: string | null` - User ID (null for guests)
-- `fetcher: PremiumStatusFetcher` - Premium status fetcher interface
+- `isPremiumOrFetcher: boolean | PremiumStatusFetcher` - Either boolean (sync) or fetcher (async)
 
-**Returns:** `Promise<boolean>`
+**Returns:** `boolean` (sync) or `Promise<boolean>` (async)
 
 #### `getUserTierInfoAsync(isGuest, userId, fetcher)`
 
@@ -355,29 +371,7 @@ const premiumStatusFetcher: PremiumStatusFetcher = {
 const tierInfo = await getUserTierInfoAsync(isGuest, userId, premiumStatusFetcher);
 ```
 
-### Example 2: Supabase
-
-```typescript
-import { getUserTierInfoAsync } from '@umituz/react-native-premium';
-import type { PremiumStatusFetcher } from '@umituz/react-native-premium';
-import { supabase } from './supabase';
-
-const premiumStatusFetcher: PremiumStatusFetcher = {
-  isPremium: async (userId: string) => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('is_premium')
-      .eq('id', userId)
-      .single();
-
-    return data?.is_premium ?? false;
-  },
-};
-
-const tierInfo = await getUserTierInfoAsync(isGuest, userId, premiumStatusFetcher);
-```
-
-### Example 3: Custom API
+### Example 2: Custom API
 
 ```typescript
 import { getUserTierInfoAsync } from '@umituz/react-native-premium';
@@ -394,7 +388,7 @@ const premiumStatusFetcher: PremiumStatusFetcher = {
 const tierInfo = await getUserTierInfoAsync(isGuest, userId, premiumStatusFetcher);
 ```
 
-### Example 4: React Component with Zustand Store
+### Example 3: React Component with Zustand Store
 
 ```typescript
 import { useUserTier } from '@umituz/react-native-premium';
@@ -538,6 +532,13 @@ npm run test:coverage
 ```
 
 ## 🔄 Version History
+
+### 1.4.0
+- ✅ **No wrapper needed!** - `getIsPremium` now supports both sync and async modes
+- ✅ **Sync mode**: `getIsPremium(isGuest, userId, isPremium: boolean)` - when you already have the value
+- ✅ **Async mode**: `getIsPremium(isGuest, userId, fetcher: PremiumStatusFetcher)` - when you need to fetch
+- ✅ Function overloads for type safety
+- ✅ Works directly from package - no app-specific wrapper required
 
 ### 1.3.0
 - ✅ **100% test coverage** with comprehensive test suite

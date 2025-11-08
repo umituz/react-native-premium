@@ -160,66 +160,99 @@ describe('getUserTierInfo', () => {
 });
 
 describe('getIsPremium', () => {
-  const mockFetcher: PremiumStatusFetcher = {
-    isPremium: jest.fn(),
-  };
+  describe('Sync mode (boolean isPremium)', () => {
+    it('should return false for guest users', () => {
+      const result = getIsPremium(true, null, true);
+      expect(result).toBe(false);
+    });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+    it('should return false when userId is null', () => {
+      const result = getIsPremium(false, null, true);
+      expect(result).toBe(false);
+    });
+
+    it('should return true when isPremium is true', () => {
+      const result = getIsPremium(false, 'user123', true);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when isPremium is false', () => {
+      const result = getIsPremium(false, 'user123', false);
+      expect(result).toBe(false);
+    });
+
+    it('should throw error for invalid inputs', () => {
+      expect(() => getIsPremium('invalid' as any, null, true)).toThrow(TypeError);
+      expect(() => getIsPremium(true, 123 as any, true)).toThrow(TypeError);
+    });
   });
 
-  it('should return false for guest users without calling fetcher', async () => {
-    const result = await getIsPremium(true, null, mockFetcher);
-    expect(result).toBe(false);
-    expect(mockFetcher.isPremium).not.toHaveBeenCalled();
-  });
+  describe('Async mode (fetcher)', () => {
+    const mockFetcher: PremiumStatusFetcher = {
+      isPremium: jest.fn(),
+    };
 
-  it('should return false when userId is null without calling fetcher', async () => {
-    const result = await getIsPremium(false, null, mockFetcher);
-    expect(result).toBe(false);
-    expect(mockFetcher.isPremium).not.toHaveBeenCalled();
-  });
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
 
-  it('should call fetcher for authenticated users', async () => {
-    (mockFetcher.isPremium as jest.Mock).mockResolvedValue(true);
-    
-    const result = await getIsPremium(false, 'user123', mockFetcher);
-    expect(result).toBe(true);
-    expect(mockFetcher.isPremium).toHaveBeenCalledWith('user123');
-    expect(mockFetcher.isPremium).toHaveBeenCalledTimes(1);
-  });
+    it('should return false for guest users without calling fetcher', async () => {
+      const result = await getIsPremium(true, null, mockFetcher);
+      expect(result).toBe(false);
+      expect(mockFetcher.isPremium).not.toHaveBeenCalled();
+    });
 
-  it('should return false when fetcher returns false', async () => {
-    (mockFetcher.isPremium as jest.Mock).mockResolvedValue(false);
-    
-    const result = await getIsPremium(false, 'user123', mockFetcher);
-    expect(result).toBe(false);
-    expect(mockFetcher.isPremium).toHaveBeenCalledWith('user123');
-  });
+    it('should return false when userId is null without calling fetcher', async () => {
+      const result = await getIsPremium(false, null, mockFetcher);
+      expect(result).toBe(false);
+      expect(mockFetcher.isPremium).not.toHaveBeenCalled();
+    });
 
-  it('should throw error when fetcher throws Error', async () => {
-    const error = new Error('Database error');
-    (mockFetcher.isPremium as jest.Mock).mockRejectedValue(error);
-    
-    await expect(getIsPremium(false, 'user123', mockFetcher)).rejects.toThrow(
-      'Failed to fetch premium status: Database error'
-    );
-  });
+    it('should call fetcher for authenticated users', async () => {
+      (mockFetcher.isPremium as jest.Mock).mockResolvedValue(true);
+      
+      const result = await getIsPremium(false, 'user123', mockFetcher);
+      expect(result).toBe(true);
+      expect(mockFetcher.isPremium).toHaveBeenCalledWith('user123');
+      expect(mockFetcher.isPremium).toHaveBeenCalledTimes(1);
+    });
 
-  it('should throw error when fetcher throws non-Error', async () => {
-    const error = 'String error';
-    (mockFetcher.isPremium as jest.Mock).mockRejectedValue(error);
-    
-    await expect(getIsPremium(false, 'user123', mockFetcher)).rejects.toThrow(
-      'Failed to fetch premium status: String error'
-    );
-  });
+    it('should return false when fetcher returns false', async () => {
+      (mockFetcher.isPremium as jest.Mock).mockResolvedValue(false);
+      
+      const result = await getIsPremium(false, 'user123', mockFetcher);
+      expect(result).toBe(false);
+      expect(mockFetcher.isPremium).toHaveBeenCalledWith('user123');
+    });
 
-  it('should throw error for invalid inputs', async () => {
-    await expect(getIsPremium('invalid' as any, null, mockFetcher)).rejects.toThrow(TypeError);
-    await expect(getIsPremium(true, 123 as any, mockFetcher)).rejects.toThrow(TypeError);
-    await expect(getIsPremium(true, null, null as any)).rejects.toThrow(TypeError);
-    await expect(getIsPremium(true, null, {} as any)).rejects.toThrow(TypeError);
+    it('should throw error when fetcher throws Error', async () => {
+      const error = new Error('Database error');
+      (mockFetcher.isPremium as jest.Mock).mockRejectedValue(error);
+      
+      await expect(getIsPremium(false, 'user123', mockFetcher)).rejects.toThrow(
+        'Failed to fetch premium status: Database error'
+      );
+    });
+
+    it('should throw error when fetcher throws non-Error', async () => {
+      const error = 'String error';
+      (mockFetcher.isPremium as jest.Mock).mockRejectedValue(error);
+      
+      await expect(getIsPremium(false, 'user123', mockFetcher)).rejects.toThrow(
+        'Failed to fetch premium status: String error'
+      );
+    });
+
+    it('should throw error for invalid inputs', () => {
+      // Invalid isGuest/userId - validation happens before async check (sync)
+      expect(() => getIsPremium('invalid' as any, null, mockFetcher)).toThrow(TypeError);
+      expect(() => getIsPremium(true, 123 as any, mockFetcher)).toThrow(TypeError);
+      
+      // Invalid fetcher - validation happens in async mode but throws sync
+      // Use authenticated user (not guest) to reach fetcher validation
+      expect(() => getIsPremium(false, 'user123', null as any)).toThrow(TypeError);
+      expect(() => getIsPremium(false, 'user123', {} as any)).toThrow(TypeError);
+    });
   });
 });
 

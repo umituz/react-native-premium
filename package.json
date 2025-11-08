@@ -1,6 +1,6 @@
 {
   "name": "@umituz/react-native-premium",
-  "version": "1.3.0",
+  "version": "1.4.1",
   "description": "Premium subscription management system for React Native apps - Centralized premium/freemium/guest tier LOGICAL determination (no database operations)",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

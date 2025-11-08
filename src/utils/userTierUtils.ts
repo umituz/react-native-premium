@@ -269,18 +269,26 @@ export function getUserTierInfo(
  * 
  * This function handles the complete logic for determining premium status:
  * - Guest users NEVER have premium (returns false immediately)
- * - Authenticated users: fetches premium status using provided fetcher
+ * - Authenticated users: uses provided isPremium value OR fetches using fetcher
  * 
  * This is the SINGLE SOURCE OF TRUTH for isPremium determination.
  * All apps should use this function instead of directly calling their premium service.
+ * 
+ * Two usage modes:
+ * 1. Sync mode: If you already have isPremium value, pass it directly
+ * 2. Async mode: If you need to fetch from database, pass a fetcher function
  *
  * @param isGuest - Whether user is a guest
  * @param userId - User ID (null for guests)
- * @param fetcher - Premium status fetcher (app-specific implementation)
- * @returns Promise<boolean> - Whether user has premium subscription
+ * @param isPremiumOrFetcher - Either boolean (sync) or PremiumStatusFetcher (async)
+ * @returns boolean (sync) or Promise<boolean> (async) - Whether user has premium subscription
  * 
  * @example
  * ```typescript
+ * // Sync mode - when you already have isPremium value
+ * const isPremium = getIsPremium(false, 'user123', true);
+ * 
+ * // Async mode - when you need to fetch from database
  * const isPremium = await getIsPremium(
  *   false,
  *   'user123',
@@ -288,31 +296,56 @@ export function getUserTierInfo(
  * );
  * ```
  */
-export async function getIsPremium(
+// Sync overload: when isPremium value is already known
+export function getIsPremium(
+  isGuestFlag: boolean,
+  userId: string | null,
+  isPremium: boolean,
+): boolean;
+
+// Async overload: when fetcher is provided
+export function getIsPremium(
   isGuestFlag: boolean,
   userId: string | null,
   fetcher: PremiumStatusFetcher,
-): Promise<boolean> {
+): Promise<boolean>;
+
+// Implementation
+export function getIsPremium(
+  isGuestFlag: boolean,
+  userId: string | null,
+  isPremiumOrFetcher: boolean | PremiumStatusFetcher,
+): boolean | Promise<boolean> {
   validateIsGuest(isGuestFlag);
   validateUserId(userId);
-  validateFetcher(fetcher);
 
   // Guest users NEVER have premium - this is centralized logic
   if (isGuestFlag || userId === null) {
     return false;
   }
 
+  // Check if it's a boolean (sync mode) or fetcher (async mode)
+  if (typeof isPremiumOrFetcher === 'boolean') {
+    // Sync mode: return the provided isPremium value
+    return isPremiumOrFetcher;
+  }
+
+  // Async mode: validate fetcher and fetch premium status
+  validateFetcher(isPremiumOrFetcher);
+
   // Authenticated users: fetch premium status using app's fetcher
   // Package handles the logic, app handles the database operation
-  try {
-    return await fetcher.isPremium(userId);
-  } catch (error) {
-    // If fetcher throws, assume not premium (fail-safe)
-    // Apps should handle errors in their fetcher implementation
-    throw new Error(
-      `Failed to fetch premium status: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
+  return (async () => {
+    try {
+      return await isPremiumOrFetcher.isPremium(userId);
+    } catch (error) {
+      // If fetcher throws, assume not premium (fail-safe)
+      // Apps should handle errors in their fetcher implementation
+      throw new Error(
+        `Failed to fetch premium status: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  })();
 }
 
 /**
@@ -340,7 +373,7 @@ export async function getUserTierInfoAsync(
   userId: string | null,
   fetcher: PremiumStatusFetcher,
 ): Promise<UserTierInfo> {
-  // Get isPremium using centralized logic
+  // Get isPremium using centralized logic (async mode)
   const isPremium = await getIsPremium(isGuestFlag, userId, fetcher);
   
   // Get tier info using centralized logic
@@ -411,7 +444,7 @@ export async function checkPremiumAccessAsync(
   userId: string | null,
   fetcher: PremiumStatusFetcher,
 ): Promise<boolean> {
-  // Get isPremium using centralized logic
+  // Get isPremium using centralized logic (async mode)
   const isPremium = await getIsPremium(isGuestFlag, userId, fetcher);
   
   // Apply premium access check logic
