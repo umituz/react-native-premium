@@ -45,6 +45,58 @@ export interface PremiumStatusFetcher {
 }
 
 /**
+ * Check if user is authenticated
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for authentication check.
+ * All apps should use this function for consistent authentication logic.
+ *
+ * @param isGuest - Whether user is a guest
+ * @param userId - User ID (null for guests)
+ * @returns Whether user is authenticated
+ * 
+ * @example
+ * ```typescript
+ * // Guest user
+ * isAuthenticated(true, null); // false
+ * 
+ * // Authenticated user
+ * isAuthenticated(false, 'user123'); // true
+ * ```
+ */
+export function isAuthenticated(
+  isGuest: boolean,
+  userId: string | null,
+): boolean {
+  return !isGuest && userId !== null;
+}
+
+/**
+ * Check if user is guest
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for guest check.
+ * All apps should use this function for consistent guest logic.
+ *
+ * @param isGuest - Whether user is a guest
+ * @param userId - User ID (null for guests)
+ * @returns Whether user is a guest
+ * 
+ * @example
+ * ```typescript
+ * // Guest user
+ * isGuest(true, null); // true
+ * 
+ * // Authenticated user
+ * isGuest(false, 'user123'); // false
+ * ```
+ */
+export function isGuest(
+  isGuestFlag: boolean,
+  userId: string | null,
+): boolean {
+  return isGuestFlag || userId === null;
+}
+
+/**
  * Determine user tier from auth state and premium status
  * 
  * This is the SINGLE SOURCE OF TRUTH for tier determination.
@@ -65,12 +117,12 @@ export interface PremiumStatusFetcher {
  * ```
  */
 export function getUserTierInfo(
-  isGuest: boolean,
+  isGuestFlag: boolean,
   userId: string | null,
   isPremium: boolean,
 ): UserTierInfo {
   // Guest users are always freemium, never premium
-  if (isGuest || !userId) {
+  if (isGuestFlag || userId === null) {
     return {
       tier: 'guest',
       isPremium: false,
@@ -115,18 +167,50 @@ export function getUserTierInfo(
  * ```
  */
 export async function getIsPremium(
-  isGuest: boolean,
+  isGuestFlag: boolean,
   userId: string | null,
   fetcher: PremiumStatusFetcher,
 ): Promise<boolean> {
   // Guest users NEVER have premium - this is centralized logic
-  if (isGuest || !userId) {
+  if (isGuestFlag || userId === null) {
     return false;
   }
 
   // Authenticated users: fetch premium status using app's fetcher
   // Package handles the logic, app handles the database operation
   return await fetcher.isPremium(userId);
+}
+
+/**
+ * Get user tier info asynchronously with fetcher
+ * 
+ * This function combines getUserTierInfo and getIsPremium logic.
+ * All tier determination logic is centralized here.
+ *
+ * @param isGuest - Whether user is a guest
+ * @param userId - User ID (null for guests)
+ * @param fetcher - Premium status fetcher (app-specific implementation)
+ * @returns Promise<UserTierInfo> - User tier information
+ * 
+ * @example
+ * ```typescript
+ * const tierInfo = await getUserTierInfoAsync(
+ *   false,
+ *   'user123',
+ *   { isPremium: async (userId) => await premiumService.isPremium(userId) }
+ * );
+ * ```
+ */
+export async function getUserTierInfoAsync(
+  isGuestFlag: boolean,
+  userId: string | null,
+  fetcher: PremiumStatusFetcher,
+): Promise<UserTierInfo> {
+  // Get isPremium using centralized logic
+  const isPremium = await getIsPremium(isGuestFlag, userId, fetcher);
+  
+  // Get tier info using centralized logic
+  return getUserTierInfo(isGuestFlag, userId, isPremium);
 }
 
 /**
@@ -152,12 +236,12 @@ export async function getIsPremium(
  * ```
  */
 export function checkPremiumAccess(
-  isGuest: boolean,
+  isGuestFlag: boolean,
   userId: string | null,
   isPremium: boolean,
 ): boolean {
   // Guest users never have premium access
-  if (isGuest || !userId) {
+  if (isGuestFlag || userId === null) {
     return false;
   }
 
@@ -185,13 +269,13 @@ export function checkPremiumAccess(
  * ```
  */
 export async function checkPremiumAccessAsync(
-  isGuest: boolean,
+  isGuestFlag: boolean,
   userId: string | null,
   fetcher: PremiumStatusFetcher,
 ): Promise<boolean> {
   // Get isPremium using centralized logic
-  const isPremium = await getIsPremium(isGuest, userId, fetcher);
+  const isPremium = await getIsPremium(isGuestFlag, userId, fetcher);
   
   // Apply premium access check logic
-  return checkPremiumAccess(isGuest, userId, isPremium);
+  return checkPremiumAccess(isGuestFlag, userId, isPremium);
 }

@@ -5,7 +5,7 @@
  * Single source of truth for all premium/freemium/guest checks
  *
  * This hook only handles LOGICAL tier determination.
- * Database operations should be handled by the app.
+ * Database operations should be handled by the app via PremiumStatusFetcher.
  *
  * @example
  * ```typescript

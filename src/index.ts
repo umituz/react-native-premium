@@ -8,7 +8,7 @@
  * Apps should handle their own database operations and pass the results here.
  *
  * Usage:
- *   import { useUserTier, getUserTierInfo, getIsPremium, checkPremiumAccess } from '@umituz/react-native-premium';
+ *   import { useUserTier, getUserTierInfo, getIsPremium, checkPremiumAccess, isAuthenticated } from '@umituz/react-native-premium';
  */
 
 // =============================================================================
@@ -17,9 +17,12 @@
 
 export {
   getUserTierInfo,
+  getUserTierInfoAsync,
   getIsPremium,
   checkPremiumAccess,
   checkPremiumAccessAsync,
+  isAuthenticated,
+  isGuest,
   type UserTier,
   type UserTierInfo,
   type PremiumStatusFetcher,
