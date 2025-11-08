@@ -4,13 +4,15 @@
  * Centralized hook for determining user tier (Guest, Freemium, Premium)
  * Single source of truth for all premium/freemium/guest checks
  *
+ * This hook only handles LOGICAL tier determination.
+ * Database operations should be handled by the app.
+ *
  * @example
  * ```typescript
- * const { tier, isPremium, isGuest, userId, refresh } = useUserTier({
+ * const { tier, isPremium, isGuest } = useUserTier({
  *   isGuest: false,
  *   userId: 'user123',
- *   usePremiumStore,
- *   premiumRepository,
+ *   isPremium: true, // App should fetch this from database
  * });
  *
  * // Simple, clean checks
@@ -21,51 +23,30 @@
  * } else {
  *   // Premium features
  * }
- *
- * // Refresh premium status (e.g., after purchase)
- * await refresh();
  * ```
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
-import type { PremiumStatus } from '../../core/entities/PremiumStatus';
-import type { IPremiumRepository } from '../../core/repositories/IPremiumRepository';
-import { getUserTierInfo } from '../../utils/userTierUtils';
+import { useMemo } from 'react';
+import { getUserTierInfo, type UserTierInfo } from '../../utils/userTierUtils';
 
 export interface UseUserTierParams {
   /** Whether user is a guest */
   isGuest: boolean;
   /** User ID (null for guests) */
   userId: string | null;
-  /** Premium store hook */
-  usePremiumStore: () => {
-    status: PremiumStatus | null;
-    loading: boolean;
-    error: string | null;
-    loadPremiumStatus: (userId: string) => Promise<void>;
-    refreshPremiumStatus: (userId: string) => Promise<void>;
-  };
-  /** Premium repository for validation */
-  premiumRepository: IPremiumRepository;
+  /** Whether user has active premium subscription (app should fetch from database) */
+  isPremium: boolean;
+  /** Optional: Loading state from app */
+  isLoading?: boolean;
+  /** Optional: Error state from app */
+  error?: string | null;
 }
 
-export interface UseUserTierResult {
-  /** User tier classification */
-  tier: 'guest' | 'freemium' | 'premium';
-  /** Whether user has premium access */
-  isPremium: boolean;
-  /** Whether user is a guest */
-  isGuest: boolean;
-  /** Whether user is authenticated */
-  isAuthenticated: boolean;
-  /** User ID (null for guests) */
-  userId: string | null;
+export interface UseUserTierResult extends UserTierInfo {
   /** Whether premium status is currently loading */
   isLoading: boolean;
   /** Premium status error (if any) */
   error: string | null;
-  /** Refresh premium status from database */
-  refresh: () => Promise<void>;
 }
 
 /**
@@ -76,51 +57,21 @@ export interface UseUserTierResult {
  * - Guest: isGuest || !userId → always freemium, never premium
  * - Freemium: authenticated but !isPremium
  * - Premium: authenticated && isPremium
+ * 
+ * Note: This hook only handles LOGICAL tier determination.
+ * Database operations (fetching premium status) should be handled by the app.
  */
 export function useUserTier(params: UseUserTierParams): UseUserTierResult {
-  const { isGuest, userId, usePremiumStore, premiumRepository } = params;
-  const { status, loading, error, loadPremiumStatus, refreshPremiumStatus } =
-    usePremiumStore();
-
-  // Load premium status when user changes
-  useEffect(() => {
-    if (isGuest || !userId) {
-      // Guest users are never premium - no need to load
-      return;
-    }
-
-    loadPremiumStatus(userId).catch(() => {
-      // Silent fail - error is stored in store
-    });
-  }, [userId, isGuest, loadPremiumStatus]);
-
-  // Refresh function
-  const refresh = useCallback(async () => {
-    if (isGuest || !userId) {
-      return;
-    }
-
-    await refreshPremiumStatus(userId);
-  }, [userId, isGuest, refreshPremiumStatus]);
+  const { isGuest, userId, isPremium, isLoading = false, error = null } = params;
 
   // Calculate tier info using centralized logic
   const tierInfo = useMemo(() => {
-    // Guest users are never premium - centralized check
-    if (isGuest || !userId) {
-      return getUserTierInfo(true, null, false);
-    }
-
-    // Check premium status (validate expiration)
-    const isPremium =
-      status !== null && premiumRepository.isPremiumValid(status);
-
-    return getUserTierInfo(false, userId, isPremium);
-  }, [isGuest, userId, status, premiumRepository]);
+    return getUserTierInfo(isGuest, userId, isPremium);
+  }, [isGuest, userId, isPremium]);
 
   return {
     ...tierInfo,
-    isLoading: loading,
+    isLoading,
     error,
-    refresh,
   };
 }

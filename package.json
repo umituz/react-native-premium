@@ -1,7 +1,7 @@
 {
   "name": "@umituz/react-native-premium",
   "version": "1.0.0",
-  "description": "Premium subscription management system for React Native apps - Centralized premium/freemium/guest tier management",
+  "description": "Premium subscription management system for React Native apps - Centralized premium/freemium/guest tier LOGICAL determination (no database operations)",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
@@ -17,8 +17,7 @@
     "subscription",
     "freemium",
     "guest",
-    "tier",
-    "zustand"
+    "tier"
   ],
   "author": "Ümit UZ <umit@umituz.com>",
   "license": "MIT",
@@ -28,16 +27,14 @@
   },
   "peerDependencies": {
     "react": ">=18.2.0",
-    "react-native": ">=0.74.0",
-    "zustand": "^5.0.2"
+    "react-native": ">=0.74.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",
     "@types/react-native": "^0.73.0",
     "react": "^18.2.0",
     "react-native": "^0.74.0",
-    "typescript": "^5.3.3",
-    "zustand": "^5.0.2"
+    "typescript": "^5.3.3"
   },
   "publishConfig": {
     "access": "public"

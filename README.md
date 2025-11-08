@@ -1,88 +1,76 @@
 # @umituz/react-native-premium
 
-Premium subscription management system for React Native apps with centralized premium/freemium/guest tier management.
+Premium subscription management system for React Native apps with centralized premium/freemium/guest tier **LOGICAL** determination.
 
-## Features
+## 🎯 Philosophy
 
-- 🎯 **Centralized Tier Management**: Single source of truth for user tiers (Guest, Freemium, Premium)
-- 🔄 **Database-First Approach**: Always reads from database, never from SDK
-- ⚡ **Zustand State Management**: Efficient state management with Zustand
+This package **ONLY** handles tier logic determination. It does **NOT** handle database operations, API calls, or state management. Apps should handle their own database operations and pass the results to this package.
+
+**Why?** This makes the package:
+- ✅ Database-agnostic (works with Firebase, Supabase, MongoDB, etc.)
+- ✅ Framework-agnostic (works with any state management)
+- ✅ Simple and lightweight
+- ✅ Easy to test
+- ✅ Reusable across 100+ apps
+
+## ✨ Features
+
+- 🎯 **Centralized Tier Logic**: Single source of truth for tier determination
+- 🚫 **No Database Operations**: Apps handle their own data fetching
+- ⚡ **Lightweight**: Only ~2KB gzipped
 - 🎨 **Type-Safe**: Full TypeScript support
-- 🔌 **Repository Pattern**: Database-agnostic architecture with dependency injection
+- 🔄 **Framework Agnostic**: Works with any state management solution
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install @umituz/react-native-premium
 ```
 
-## User Tiers
+## 🎭 User Tiers
 
-- **Guest**: Not authenticated, always freemium
-- **Freemium**: Authenticated but no active premium subscription OR guest
+- **Guest**: Not authenticated (`isGuest || !userId`) → always freemium, never premium
+- **Freemium**: Authenticated but no active premium subscription
 - **Premium**: Authenticated with active premium subscription
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Create Repository Implementation
-
-```typescript
-import { IPremiumRepository, PremiumStatus } from '@umituz/react-native-premium';
-import { db } from './firebase';
-
-export class PremiumRepository implements IPremiumRepository {
-  async getPremiumStatus(userId: string): Promise<PremiumStatus | null> {
-    // Your database implementation
-    const doc = await db.collection('users').doc(userId).get();
-    return doc.data()?.premium || null;
-  }
-
-  async updatePremiumStatus(
-    userId: string,
-    status: Partial<PremiumStatus>,
-  ): Promise<PremiumStatus> {
-    // Your database implementation
-    await db.collection('users').doc(userId).update({ premium: status });
-    return this.getPremiumStatus(userId);
-  }
-
-  isPremiumValid(status: PremiumStatus): boolean {
-    if (!status.isPremium) return false;
-    if (!status.expiresAt) return true; // Lifetime premium
-    return new Date(status.expiresAt) > new Date();
-  }
-}
-```
-
-### 2. Setup Service and Store
+### Basic Usage (Utility Function)
 
 ```typescript
-import {
-  PremiumService,
-  createPremiumStore,
-} from '@umituz/react-native-premium';
-import { PremiumRepository } from './PremiumRepository';
+import { getUserTierInfo, checkPremiumAccess } from '@umituz/react-native-premium';
 
-const repository = new PremiumRepository();
-const premiumService = new PremiumService(repository);
-const usePremiumStore = createPremiumStore(premiumService);
+// Determine tier
+const tierInfo = getUserTierInfo(
+  isGuest,      // boolean: is user a guest?
+  userId,       // string | null: user ID
+  isPremium     // boolean: does user have premium? (from your database)
+);
+
+// tierInfo: { tier: 'premium' | 'freemium' | 'guest', isPremium, isGuest, isAuthenticated, userId }
+
+// Check premium access
+const hasAccess = checkPremiumAccess(isGuest, userId, isPremium);
+// Returns: false for guests, true/false for authenticated users based on isPremium
 ```
 
-### 3. Use in Components
+### React Hook Usage
 
 ```typescript
 import { useUserTier } from '@umituz/react-native-premium';
-import { useAuth } from './useAuth';
-import { usePremiumStore } from './premiumStore';
-import { premiumRepository } from './PremiumRepository';
+import { useAuth } from './useAuth'; // Your auth hook
+import { usePremiumStatus } from './usePremiumStatus'; // Your premium status hook
 
 function MyComponent() {
   const { user, isGuest } = useAuth();
-  const { tier, isPremium, refresh } = useUserTier({
+  const { isPremium, isLoading, error } = usePremiumStatus(user?.uid);
+  
+  const { tier, isPremium: hasPremium, isGuest: isGuestUser } = useUserTier({
     isGuest,
     userId: user?.uid ?? null,
-    usePremiumStore,
-    premiumRepository,
+    isPremium: isPremium ?? false,
+    isLoading,
+    error,
   });
 
   if (tier === 'guest') {
@@ -97,49 +85,193 @@ function MyComponent() {
 }
 ```
 
-## API Reference
+## 📚 API Reference
 
-### `PremiumService`
+### `getUserTierInfo(isGuest, userId, isPremium)`
 
-Business logic for premium subscription management.
+Determines user tier from auth state and premium status.
 
+**Parameters:**
+- `isGuest: boolean` - Whether user is a guest
+- `userId: string | null` - User ID (null for guests)
+- `isPremium: boolean` - Whether user has active premium subscription
+
+**Returns:** `UserTierInfo`
 ```typescript
-class PremiumService {
-  constructor(repository: IPremiumRepository);
-  getPremiumStatus(userId: string): Promise<PremiumStatus>;
-  isPremium(userId: string): Promise<boolean>;
-  updatePremiumStatus(userId: string, updates: Partial<PremiumStatus>): Promise<PremiumStatus>;
-  activatePremium(userId: string, productId: string, expiresAt: string | null): Promise<PremiumStatus>;
-  deactivatePremium(userId: string): Promise<PremiumStatus>;
+{
+  tier: 'guest' | 'freemium' | 'premium';
+  isPremium: boolean;
+  isGuest: boolean;
+  isAuthenticated: boolean;
+  userId: string | null;
 }
 ```
 
-### `useUserTier`
-
-Hook to get user tier information.
-
+**Example:**
 ```typescript
-function useUserTier(params: {
+// Guest user
+getUserTierInfo(true, null, false);
+// { tier: 'guest', isPremium: false, isGuest: true, isAuthenticated: false, userId: null }
+
+// Premium user
+getUserTierInfo(false, 'user123', true);
+// { tier: 'premium', isPremium: true, isGuest: false, isAuthenticated: true, userId: 'user123' }
+
+// Freemium user
+getUserTierInfo(false, 'user123', false);
+// { tier: 'freemium', isPremium: false, isGuest: false, isAuthenticated: true, userId: 'user123' }
+```
+
+### `checkPremiumAccess(isGuest, userId, isPremium)`
+
+Checks if user has premium access. Guest users **NEVER** have premium access.
+
+**Parameters:**
+- `isGuest: boolean` - Whether user is a guest
+- `userId: string | null` - User ID (null for guests)
+- `isPremium: boolean` - Whether user has active premium subscription
+
+**Returns:** `boolean`
+
+**Example:**
+```typescript
+// Guest user - always false
+checkPremiumAccess(true, null, true); // false
+
+// Authenticated premium user
+checkPremiumAccess(false, 'user123', true); // true
+
+// Authenticated freemium user
+checkPremiumAccess(false, 'user123', false); // false
+```
+
+### `useUserTier(params)`
+
+React hook for tier determination.
+
+**Parameters:**
+```typescript
+{
   isGuest: boolean;
   userId: string | null;
-  usePremiumStore: () => PremiumStore;
-  premiumRepository: IPremiumRepository;
-}): UseUserTierResult;
+  isPremium: boolean; // App should fetch from database
+  isLoading?: boolean; // Optional: loading state from app
+  error?: string | null; // Optional: error state from app
+}
 ```
 
-### `getUserTierInfo`
+**Returns:** `UseUserTierResult` (extends `UserTierInfo` with `isLoading` and `error`)
 
-Utility function to determine user tier.
+## 🔧 Integration Examples
+
+### Example 1: Firebase Firestore
 
 ```typescript
-function getUserTierInfo(
-  isGuest: boolean,
-  userId: string | null,
-  isPremium: boolean
-): UserTierInfo;
+import { getUserTierInfo } from '@umituz/react-native-premium';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
+async function checkUserTier(userId: string | null, isGuest: boolean) {
+  if (isGuest || !userId) {
+    return getUserTierInfo(true, null, false);
+  }
+
+  // Fetch from your database
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  const isPremium = userDoc.data()?.isPremium ?? false;
+
+  return getUserTierInfo(false, userId, isPremium);
+}
 ```
 
-## License
+### Example 2: Supabase
+
+```typescript
+import { getUserTierInfo } from '@umituz/react-native-premium';
+import { supabase } from './supabase';
+
+async function checkUserTier(userId: string | null, isGuest: boolean) {
+  if (isGuest || !userId) {
+    return getUserTierInfo(true, null, false);
+  }
+
+  // Fetch from your database
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('is_premium')
+    .eq('id', userId)
+    .single();
+
+  const isPremium = data?.is_premium ?? false;
+  return getUserTierInfo(false, userId, isPremium);
+}
+```
+
+### Example 3: Custom API
+
+```typescript
+import { getUserTierInfo } from '@umituz/react-native-premium';
+
+async function checkUserTier(userId: string | null, isGuest: boolean) {
+  if (isGuest || !userId) {
+    return getUserTierInfo(true, null, false);
+  }
+
+  // Fetch from your API
+  const response = await fetch(`/api/users/${userId}/premium`);
+  const { isPremium } = await response.json();
+
+  return getUserTierInfo(false, userId, isPremium);
+}
+```
+
+## 🎯 Core Logic
+
+The tier determination logic is simple and consistent:
+
+```typescript
+// Guest users are ALWAYS freemium, NEVER premium
+if (isGuest || !userId) {
+  return { tier: 'guest', isPremium: false };
+}
+
+// Authenticated users: premium or freemium
+return {
+  tier: isPremium ? 'premium' : 'freemium',
+  isPremium,
+};
+```
+
+## 📝 Best Practices
+
+1. **Always use this package for tier determination** - Don't implement your own logic
+2. **Fetch premium status in your app** - This package doesn't handle database operations
+3. **Pass loading/error states** - Use the optional `isLoading` and `error` params in `useUserTier`
+4. **Cache premium status** - Use your state management (Zustand, Redux, etc.) to cache results
+
+## 🔍 TypeScript Types
+
+```typescript
+type UserTier = 'guest' | 'freemium' | 'premium';
+
+interface UserTierInfo {
+  tier: UserTier;
+  isPremium: boolean;
+  isGuest: boolean;
+  isAuthenticated: boolean;
+  userId: string | null;
+}
+```
+
+## 📄 License
 
 MIT
 
+## 🤝 Contributing
+
+This package is designed to be used across 100+ apps. When making changes:
+
+1. Keep it simple - only tier logic, no database operations
+2. Maintain backward compatibility
+3. Add tests for all edge cases
+4. Update documentation

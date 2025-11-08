@@ -2,38 +2,25 @@
  * @umituz/react-native-premium - Public API
  *
  * Premium subscription management system for React Native apps
- * Provides centralized premium/freemium/guest tier management
+ * Provides centralized premium/freemium/guest tier LOGICAL determination
+ *
+ * This package ONLY handles tier logic, NOT database operations.
+ * Apps should handle their own database operations and pass the results here.
  *
  * Usage:
- *   import { PremiumService, createPremiumStore, useUserTier, getUserTierInfo } from '@umituz/react-native-premium';
+ *   import { useUserTier, getUserTierInfo, checkPremiumAccess } from '@umituz/react-native-premium';
  */
 
 // =============================================================================
-// CORE ENTITIES
+// UTILITIES - Core Logic
 // =============================================================================
 
 export {
-  createDefaultPremiumStatus,
-  type PremiumStatus,
-} from './core/entities/PremiumStatus';
-
-// =============================================================================
-// REPOSITORY INTERFACE
-// =============================================================================
-
-export type { IPremiumRepository } from './core/repositories/IPremiumRepository';
-
-// =============================================================================
-// SERVICES
-// =============================================================================
-
-export { PremiumService } from './infrastructure/services/PremiumService';
-
-// =============================================================================
-// STORAGE
-// =============================================================================
-
-export { createPremiumStore } from './infrastructure/storage/PremiumStore';
+  getUserTierInfo,
+  checkPremiumAccess,
+  type UserTier,
+  type UserTierInfo,
+} from './utils/userTierUtils';
 
 // =============================================================================
 // HOOKS
@@ -44,16 +31,3 @@ export {
   type UseUserTierParams,
   type UseUserTierResult,
 } from './presentation/hooks/useUserTier';
-
-// =============================================================================
-// UTILITIES
-// =============================================================================
-
-export {
-  getUserTierInfo,
-  getUserTierInfoAsync,
-  checkPremiumAccess,
-  type UserTier,
-  type UserTierInfo,
-} from './utils/userTierUtils';
-
