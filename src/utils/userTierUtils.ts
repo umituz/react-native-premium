@@ -32,6 +32,19 @@ export interface UserTierInfo {
 }
 
 /**
+ * Premium status fetcher interface
+ * Apps should implement this to provide premium status from their database
+ */
+export interface PremiumStatusFetcher {
+  /**
+   * Check if user has active premium subscription
+   * @param userId - User ID (never null, this is only called for authenticated users)
+   * @returns Promise<boolean> - Whether user has premium subscription
+   */
+  isPremium(userId: string): Promise<boolean>;
+}
+
+/**
  * Determine user tier from auth state and premium status
  * 
  * This is the SINGLE SOURCE OF TRUTH for tier determination.
@@ -78,6 +91,45 @@ export function getUserTierInfo(
 }
 
 /**
+ * Get isPremium value with centralized logic
+ * 
+ * This function handles the complete logic for determining premium status:
+ * - Guest users NEVER have premium (returns false immediately)
+ * - Authenticated users: fetches premium status using provided fetcher
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for isPremium determination.
+ * All apps should use this function instead of directly calling their premium service.
+ *
+ * @param isGuest - Whether user is a guest
+ * @param userId - User ID (null for guests)
+ * @param fetcher - Premium status fetcher (app-specific implementation)
+ * @returns Promise<boolean> - Whether user has premium subscription
+ * 
+ * @example
+ * ```typescript
+ * const isPremium = await getIsPremium(
+ *   false,
+ *   'user123',
+ *   { isPremium: async (userId) => await premiumService.isPremium(userId) }
+ * );
+ * ```
+ */
+export async function getIsPremium(
+  isGuest: boolean,
+  userId: string | null,
+  fetcher: PremiumStatusFetcher,
+): Promise<boolean> {
+  // Guest users NEVER have premium - this is centralized logic
+  if (isGuest || !userId) {
+    return false;
+  }
+
+  // Authenticated users: fetch premium status using app's fetcher
+  // Package handles the logic, app handles the database operation
+  return await fetcher.isPremium(userId);
+}
+
+/**
  * Check if user has premium access (synchronous version)
  * 
  * Guest users NEVER have premium access, regardless of isPremium value.
@@ -110,4 +162,36 @@ export function checkPremiumAccess(
   }
 
   return isPremium;
+}
+
+/**
+ * Check if user has premium access (async version with fetcher)
+ * 
+ * This function combines getIsPremium and checkPremiumAccess logic.
+ * Guest users NEVER have premium access.
+ *
+ * @param isGuest - Whether user is a guest
+ * @param userId - User ID (null for guests)
+ * @param fetcher - Premium status fetcher (app-specific implementation)
+ * @returns Promise<boolean> - Whether user has premium access
+ * 
+ * @example
+ * ```typescript
+ * const hasAccess = await checkPremiumAccessAsync(
+ *   false,
+ *   'user123',
+ *   { isPremium: async (userId) => await premiumService.isPremium(userId) }
+ * );
+ * ```
+ */
+export async function checkPremiumAccessAsync(
+  isGuest: boolean,
+  userId: string | null,
+  fetcher: PremiumStatusFetcher,
+): Promise<boolean> {
+  // Get isPremium using centralized logic
+  const isPremium = await getIsPremium(isGuest, userId, fetcher);
+  
+  // Apply premium access check logic
+  return checkPremiumAccess(isGuest, userId, isPremium);
 }
