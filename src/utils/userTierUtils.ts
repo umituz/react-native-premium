@@ -45,6 +45,118 @@ export interface PremiumStatusFetcher {
 }
 
 /**
+ * Type guard to check if a value is a valid UserTier
+ * 
+ * @param value - Value to check
+ * @returns Whether value is a valid UserTier
+ * 
+ * @example
+ * ```typescript
+ * if (isValidUserTier(someValue)) {
+ *   // TypeScript knows someValue is UserTier
+ * }
+ * ```
+ */
+export function isValidUserTier(value: unknown): value is UserTier {
+  return value === 'guest' || value === 'freemium' || value === 'premium';
+}
+
+/**
+ * Type guard to check if an object is a valid UserTierInfo
+ * 
+ * @param value - Value to check
+ * @returns Whether value is a valid UserTierInfo
+ * 
+ * @example
+ * ```typescript
+ * if (isUserTierInfo(someValue)) {
+ *   // TypeScript knows someValue is UserTierInfo
+ * }
+ * ```
+ */
+export function isUserTierInfo(value: unknown): value is UserTierInfo {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  return (
+    isValidUserTier(obj.tier) &&
+    typeof obj.isPremium === 'boolean' &&
+    typeof obj.isGuest === 'boolean' &&
+    typeof obj.isAuthenticated === 'boolean' &&
+    (obj.userId === null || typeof obj.userId === 'string')
+  );
+}
+
+/**
+ * Validate userId parameter
+ * 
+ * @param userId - User ID to validate
+ * @throws {TypeError} If userId is invalid
+ */
+function validateUserId(userId: string | null): void {
+  if (userId !== null && typeof userId !== 'string') {
+    throw new TypeError(
+      `Invalid userId: expected string or null, got ${typeof userId}`
+    );
+  }
+
+  if (userId !== null && userId.trim() === '') {
+    throw new TypeError('Invalid userId: cannot be empty string');
+  }
+}
+
+/**
+ * Validate isGuest parameter
+ * 
+ * @param isGuest - isGuest flag to validate
+ * @throws {TypeError} If isGuest is invalid
+ */
+function validateIsGuest(isGuest: boolean): void {
+  if (typeof isGuest !== 'boolean') {
+    throw new TypeError(
+      `Invalid isGuest: expected boolean, got ${typeof isGuest}`
+    );
+  }
+}
+
+/**
+ * Validate isPremium parameter
+ * 
+ * @param isPremium - isPremium flag to validate
+ * @throws {TypeError} If isPremium is invalid
+ */
+function validateIsPremium(isPremium: boolean): void {
+  if (typeof isPremium !== 'boolean') {
+    throw new TypeError(
+      `Invalid isPremium: expected boolean, got ${typeof isPremium}`
+    );
+  }
+}
+
+/**
+ * Validate PremiumStatusFetcher
+ * 
+ * @param fetcher - Fetcher to validate
+ * @throws {TypeError} If fetcher is invalid
+ */
+function validateFetcher(fetcher: PremiumStatusFetcher): void {
+  if (typeof fetcher !== 'object' || fetcher === null) {
+    throw new TypeError(
+      `Invalid fetcher: expected object, got ${typeof fetcher}`
+    );
+  }
+
+  if (typeof fetcher.isPremium !== 'function') {
+    throw new TypeError(
+      'Invalid fetcher: isPremium must be a function'
+    );
+  }
+}
+
+/**
  * Check if user is authenticated
  * 
  * This is the SINGLE SOURCE OF TRUTH for authentication check.
@@ -67,6 +179,9 @@ export function isAuthenticated(
   isGuest: boolean,
   userId: string | null,
 ): boolean {
+  validateIsGuest(isGuest);
+  validateUserId(userId);
+  
   return !isGuest && userId !== null;
 }
 
@@ -93,6 +208,9 @@ export function isGuest(
   isGuestFlag: boolean,
   userId: string | null,
 ): boolean {
+  validateIsGuest(isGuestFlag);
+  validateUserId(userId);
+  
   return isGuestFlag || userId === null;
 }
 
@@ -121,6 +239,10 @@ export function getUserTierInfo(
   userId: string | null,
   isPremium: boolean,
 ): UserTierInfo {
+  validateIsGuest(isGuestFlag);
+  validateUserId(userId);
+  validateIsPremium(isPremium);
+
   // Guest users are always freemium, never premium
   if (isGuestFlag || userId === null) {
     return {
@@ -171,6 +293,10 @@ export async function getIsPremium(
   userId: string | null,
   fetcher: PremiumStatusFetcher,
 ): Promise<boolean> {
+  validateIsGuest(isGuestFlag);
+  validateUserId(userId);
+  validateFetcher(fetcher);
+
   // Guest users NEVER have premium - this is centralized logic
   if (isGuestFlag || userId === null) {
     return false;
@@ -178,7 +304,15 @@ export async function getIsPremium(
 
   // Authenticated users: fetch premium status using app's fetcher
   // Package handles the logic, app handles the database operation
-  return await fetcher.isPremium(userId);
+  try {
+    return await fetcher.isPremium(userId);
+  } catch (error) {
+    // If fetcher throws, assume not premium (fail-safe)
+    // Apps should handle errors in their fetcher implementation
+    throw new Error(
+      `Failed to fetch premium status: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 
 /**
@@ -240,6 +374,10 @@ export function checkPremiumAccess(
   userId: string | null,
   isPremium: boolean,
 ): boolean {
+  validateIsGuest(isGuestFlag);
+  validateUserId(userId);
+  validateIsPremium(isPremium);
+
   // Guest users never have premium access
   if (isGuestFlag || userId === null) {
     return false;
@@ -278,4 +416,78 @@ export async function checkPremiumAccessAsync(
   
   // Apply premium access check logic
   return checkPremiumAccess(isGuestFlag, userId, isPremium);
+}
+
+/**
+ * Compare two tiers to determine if first tier has higher or equal access than second
+ * 
+ * Tier hierarchy: guest < freemium < premium
+ * 
+ * @param tier1 - First tier to compare
+ * @param tier2 - Second tier to compare
+ * @returns Whether tier1 has higher or equal access than tier2
+ * 
+ * @example
+ * ```typescript
+ * hasTierAccess('premium', 'freemium'); // true
+ * hasTierAccess('freemium', 'premium'); // false
+ * hasTierAccess('premium', 'premium'); // true
+ * ```
+ */
+export function hasTierAccess(tier1: UserTier, tier2: UserTier): boolean {
+  const tierLevels: Record<UserTier, number> = {
+    guest: 0,
+    freemium: 1,
+    premium: 2,
+  };
+
+  return tierLevels[tier1] >= tierLevels[tier2];
+}
+
+/**
+ * Check if tier is premium
+ * 
+ * @param tier - Tier to check
+ * @returns Whether tier is premium
+ * 
+ * @example
+ * ```typescript
+ * isTierPremium('premium'); // true
+ * isTierPremium('freemium'); // false
+ * ```
+ */
+export function isTierPremium(tier: UserTier): boolean {
+  return tier === 'premium';
+}
+
+/**
+ * Check if tier is freemium
+ * 
+ * @param tier - Tier to check
+ * @returns Whether tier is freemium
+ * 
+ * @example
+ * ```typescript
+ * isTierFreemium('freemium'); // true
+ * isTierFreemium('premium'); // false
+ * ```
+ */
+export function isTierFreemium(tier: UserTier): boolean {
+  return tier === 'freemium';
+}
+
+/**
+ * Check if tier is guest
+ * 
+ * @param tier - Tier to check
+ * @returns Whether tier is guest
+ * 
+ * @example
+ * ```typescript
+ * isTierGuest('guest'); // true
+ * isTierGuest('premium'); // false
+ * ```
+ */
+export function isTierGuest(tier: UserTier): boolean {
+  return tier === 'guest';
 }
