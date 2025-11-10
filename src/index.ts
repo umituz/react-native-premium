@@ -43,3 +43,12 @@ export {
   type UseUserTierParams,
   type UseUserTierResult,
 } from './presentation/hooks/useUserTier';
+
+// =============================================================================
+// COMPONENTS
+// =============================================================================
+
+export {
+  PremiumInfoCard,
+  type PremiumInfoCardProps,
+} from './presentation/components/PremiumInfoCard';

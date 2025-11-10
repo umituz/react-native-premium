@@ -30,7 +30,10 @@
   },
   "peerDependencies": {
     "react": ">=18.2.0",
-    "react-native": ">=0.74.0"
+    "react-native": ">=0.74.0",
+    "@umituz/react-native-design-system": "*",
+    "@umituz/react-native-localization": "*",
+    "@umituz/react-native-subscription": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
