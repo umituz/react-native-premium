@@ -10,7 +10,7 @@
  * - Plan type (Monthly/Yearly)
  * - Expiration date
  * - Purchase date
- * - Manage subscription link
+ * - Manage subscription link (only for non-premium users)
  *
  * For non-premium users, shows upgrade card
  */
@@ -39,8 +39,8 @@ export interface PremiumInfoCardProps {
   /** Purchase date (ISO string) */
   purchasedAt?: string | null;
 
-  /** Callback when card is pressed */
-  onPress: () => void;
+  /** Callback when card is pressed (optional for premium users) */
+  onPress?: () => void;
 
   /** Optional premium badge component to display */
   premiumBadge?: React.ReactNode;
@@ -129,6 +129,10 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
 
   if (!isPremium) {
     // Not premium - show upgrade card
+    // onPress is required for non-premium users
+    if (!onPress) {
+      throw new Error("onPress is required for non-premium users");
+    }
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
         <AtomicCard
@@ -167,8 +171,11 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
   }
 
   // Premium active - show details
+  // Note: Premium users should NOT see "Manage Subscription" link
+  // They manage subscriptions through device settings, not in-app
+  // onPress is optional for premium users (can be undefined)
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity onPress={onPress || (() => {})} activeOpacity={0.8}>
       <AtomicCard
         style={[
           styles.card,
@@ -243,21 +250,8 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
             </View>
           )}
 
-          {/* Manage Subscription */}
-          <View style={styles.manageRow}>
-            <AtomicText
-              type="bodySmall"
-              color="primary"
-              style={styles.manageText}
-            >
-              {manageSubscriptionLabelText}
-            </AtomicText>
-            <AtomicIcon
-              name="ChevronRight"
-              size={16}
-              color={tokens.colors.primary}
-            />
-          </View>
+          {/* Manage Subscription - ONLY for non-premium users */}
+          {/* Premium users manage subscriptions through device settings, not in-app */}
         </View>
       </AtomicCard>
     </TouchableOpacity>
