@@ -67,7 +67,35 @@ const tierInfo = getUserTierInfo(
 const hasAccess = checkPremiumAccess(isGuest, userId, isPremium);
 ```
 
-### 2. React Hook Usage
+### 2. React Hook Usage (Recommended)
+
+**✅ Recommended: useUserTierWithRepository** - Automatically fetches premium status
+
+```typescript
+import { useUserTierWithRepository } from '@umituz/react-native-premium';
+import { useAuth } from '@domains/auth'; // Your auth hook
+import { premiumRepository } from '@/infrastructure/repositories/PremiumRepository'; // Your repository
+
+function MyComponent() {
+  const auth = useAuth();
+  const { tier, isPremium, isGuest, isLoading, refresh } = useUserTierWithRepository({
+    auth,
+    repository: premiumRepository,
+  });
+
+  if (tier === 'guest') {
+    return <GuestUpgradeCard />;
+  }
+
+  if (tier === 'freemium') {
+    return <FreemiumLimits />;
+  }
+
+  return <PremiumFeatures />;
+}
+```
+
+**Alternative: useUserTier** - Manual premium status fetching
 
 ```typescript
 import { useUserTier } from '@umituz/react-native-premium';

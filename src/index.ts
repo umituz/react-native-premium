@@ -44,6 +44,22 @@ export {
   type UseUserTierResult,
 } from './presentation/hooks/useUserTier';
 
+export {
+  useUserTierWithRepository,
+  type UseUserTierWithRepositoryParams,
+  type UseUserTierWithRepositoryResult,
+  type AuthProvider,
+} from './presentation/hooks/useUserTierWithRepository';
+
+// =============================================================================
+// TYPES - Repository Interface
+// =============================================================================
+
+export type {
+  ISubscriptionRepository,
+  SubscriptionStatus,
+} from './domain/types/ISubscriptionRepository';
+
 // =============================================================================
 // COMPONENTS
 // =============================================================================

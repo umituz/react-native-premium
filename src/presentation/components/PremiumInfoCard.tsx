@@ -83,7 +83,7 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
   manageSubscriptionLabel,
 }) => {
   const tokens = useAppDesignTokens();
-  const { t, locale } = useLocalization();
+  const { t, currentLanguage } = useLocalization();
 
   // Determine plan type from product ID
   const planType =
@@ -95,10 +95,10 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
 
   // Format dates
   const expiresAtFormatted = expiresAt
-    ? formatExpirationDate(expiresAt, locale)
+    ? formatExpirationDate(expiresAt, currentLanguage)
     : null;
   const purchasedAtFormatted = purchasedAt
-    ? new Date(purchasedAt).toLocaleDateString(locale, {
+    ? new Date(purchasedAt).toLocaleDateString(currentLanguage, {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -146,7 +146,7 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
           ]}
         >
           <View style={styles.iconContainer}>
-            <AtomicIcon name="Crown" size={32} color={tokens.colors.primary} />
+            <AtomicIcon name="Crown" customSize={32} customColor={tokens.colors.primary} />
           </View>
           <View style={styles.content}>
             <AtomicText type="titleMedium" color="onSurface">
@@ -162,8 +162,8 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
           </View>
           <AtomicIcon
             name="ChevronRight"
-            size={20}
-            color={tokens.colors.textSecondary}
+            customSize={20}
+            customColor={tokens.colors.textSecondary}
           />
         </AtomicCard>
       </TouchableOpacity>
@@ -188,7 +188,7 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
       >
         <View style={styles.headerRow}>
           <View style={styles.iconContainer}>
-            <AtomicIcon name="Crown" size={32} color={tokens.colors.primary} />
+            <AtomicIcon name="Crown" customSize={32} customColor={tokens.colors.primary} />
           </View>
           {premiumBadge}
         </View>
@@ -202,8 +202,8 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
           <View style={styles.infoRow}>
             <AtomicIcon
               name="Package"
-              size={16}
-              color={tokens.colors.textSecondary}
+              customSize={16}
+              customColor={tokens.colors.textSecondary}
             />
             <AtomicText
               type="bodyMedium"
