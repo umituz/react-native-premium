@@ -219,8 +219,8 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
             <View style={styles.infoRow}>
               <AtomicIcon
                 name="Calendar"
-                size={16}
-                color={tokens.colors.textSecondary}
+                customSize={16}
+                customColor={tokens.colors.textSecondary}
               />
               <AtomicText
                 type="bodyMedium"
@@ -237,8 +237,8 @@ export const PremiumInfoCard: React.FC<PremiumInfoCardProps> = ({
             <View style={styles.infoRow}>
               <AtomicIcon
                 name="CheckCircle"
-                size={16}
-                color={tokens.colors.textSecondary}
+                customSize={16}
+                customColor={tokens.colors.textSecondary}
               />
               <AtomicText
                 type="bodyMedium"
