@@ -17,12 +17,8 @@
 
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import {
-  useAppDesignTokens,
-  AtomicText,
-  AtomicIcon,
-  AtomicCard,
-} from "@umituz/react-native-design-system";
+import { AtomicText, AtomicIcon, AtomicCard } from "@umituz/react-native-design-system-atoms";
+import { useAppDesignTokens } from "@umituz/react-native-design-system-theme";
 import { useLocalization } from "@umituz/react-native-localization";
 import { formatExpirationDate } from "@umituz/react-native-subscription";
 
